@@ -1,0 +1,473 @@
+\documentclass{beamer}
+\usepackage{amsmath, amsfonts}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{multicol}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{fontspec}
+\setmainfont{Arial}
+\usepackage{cancel}
+\usepackage{natbib}
+\usepackage{booktabs}
+\usefonttheme[onlymath]{serif}
+\usepackage{tikz}
+\tcbuselibrary{most}
+
+\setbeamertemplate{footline}[frame number]
+\newcommand{\st}[1]{\small{\texttt{#1}}}
+
+\newtcbox{\mybox}[1][blue]{on line,colback=#1!10!white, colframe=#1!50!black, left=1pt,top=1.5pt,bottom=1.5pt,right=1pt,boxsep=0pt}
+
+\title{Using lasso and related estimators for prediction}
+\date{07/09/2013}
+
+\begin{document}
+
+	\begin{frame}
+		\titlepage
+	\end{frame}
+
+\begin{frame}{Motivation: Prediction}
+	What is a prediction?
+	\begin{itemize}
+		\item Predict an outcome in new data using information from existing data
+		\item Good prediction minimizes mean-squared error (or another loss function) in new data
+	\end{itemize}
+	Examples:
+	\begin{itemize}
+		\item We have data on housing prices with hundreds of predictors. What would be the value of a new house?
+		\item Given a new application for a credit card, what would be the probability of default?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\textbf{Questions}
+	\begin{itemize}
+		\item Suppose you have many covariates, {\color{red}what belongs to the prediction model?}
+		\item What if there are {\color{red}more variables than number of observations?}
+	\end{itemize}
+	\textbf{Assumption}
+	\begin{itemize}
+		\item We assume that there are only a few variables that matter for good predictions (sparsity assumption)
+	\end{itemize}
+\end{frame}	
+
+\begin{frame}{Why not just run OLS regression using all covariates?}
+	\begin{itemize}
+		\item It may not be feasible if there are more variables than observations (the matrix $\mathit{X′X}$ is not invertible)
+		\item Even if it is feasible, too many covariates may cause \textbf{overfitting}
+		\item \textbf{Overfitting} is the inclusion of extra parameters that {\color{red}improve the in-sample fit but increase the out-of-sample prediction errors}
+		\item These extra parameters capture the in-sample noise, but they perform poorly in the out-of-sample prediction
+	\end{itemize}
+\end{frame}	
+
+\begin{frame}{Using penalized regression to avoid overfitting}
+	\label{penalized regression}
+	$$\hat{\beta}=argmin_\beta\left\lbrace\sum_{i=1}^{N}L(x'_i\beta,y_i)+P(\beta)\right\rbrace$$
+	where $L()$ is the loss function and $P(\beta)$ is the penalization.
+	
+	\begin{itemize}
+		\item For linear model, $L(x'_i\beta, y_i ) = (y_i − x'_i\beta)^2$. For nonlinear model, it is the negative log-likelihood function
+		\item The penalty term $P(\beta)$ penalizes including many or large coefficients
+		\item $\hat{\beta}$ are the penalized coefficients (\hyperlink{prediction example}{\mybox{prediction example}})
+	\end{itemize}
+\end{frame}	
+
+\begin{frame}{Penalization}
+	$$\hat{\beta}=argmin_\beta\left\lbrace\sum_{i=1}^{N}L(x'_i\beta,y_i)+P(\beta)\right\rbrace$$
+	\centering
+	\begin{tabular}{cc}
+		\toprule
+		estimator&$P(\beta)$\\
+		\textbf{lasso}&$\lambda{\color{red}\sum_{j=1}^{p}|\beta_j|}$\\
+		\textbf{ridge}&$\lambda{\color{blue}\sum_{j=1}^{p}\beta_j^2}$\\
+		\textbf{elastic net}&$\lambda[\alpha{\color{red}\sum_{j=1}^{p}|\beta_j|}+\frac{(1-\alpha)}{2}{\color{blue}\sum_{j=1}^{p}\beta_j^2}]$\\
+		\bottomrule
+	\end{tabular}
+	\begin{itemize}
+		\item The elastic-net estimator is a mixture of lasso and ridge regression(\hyperlink{elastic-net example}{\mybox{elastic-net example}})
+		\item We solve this optimization problem by searching over a grid of $\lambda$’s (and $\alpha$’s)
+	\end{itemize}
+\end{frame}	
+
+\begin{frame}{Overview of Stata 16's lasso features}
+	\begin{itemize}
+		\item Lasso and elastic net can select variables from a lot of variables
+		\item You can use these selected variables to
+		\begin{itemize}
+			\item predict an outcome using lasso toolbox (today’s talk)
+			\item estimate the effect of other variables of interest on the outcome using the selected variables as controls (next webinar)
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Lasso toolbox overview}
+	\begin{itemize}
+		\item Estimation
+		\begin{itemize}
+			\item \textbf{lasso}
+			\item \textbf{elasticnet}
+			\item \textbf{sqrtlasso}
+		\end{itemize}
+		\item Graph
+		\begin{itemize}
+			\item \textbf{cvplot}
+			\item \textbf{coefpath}
+		\end{itemize}
+		\item Exploratory tools
+		\begin{itemize}
+			\item \textbf{lassoinfo}
+			\item \textbf{lassoknots}
+			\item \textbf{lassocoef}
+			\item \textbf{lassoselect}
+		\end{itemize}	
+		\item Prediction
+		\begin{itemize}
+			\item \textbf{splitsample}
+			\item \textbf{predict}
+			\item \textbf{lassogof}
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Example: Predicting housing value}
+	
+	{\color{blue}Goal :}
+	\begin{minipage}[t]{0.8\linewidth}
+		We have data on housing prices with hundreds of \\predictors. What would be the value of a new house?\\
+	\end{minipage}
+
+	{\color{blue}Data :}
+	\begin{minipage}[t]{0.8\linewidth}
+		Extract from American Housing Survey\\
+	\end{minipage}
+	
+	{\color{blue}Features :}
+	\begin{minipage}[t]{0.8\linewidth}
+		The number of bedrooms, the number of rooms, building age, insurance, access to Internet, lot size, time in house, cars per person,...\\
+	\end{minipage}
+	
+	{\color{blue}Variables:}
+	\begin{minipage}[t]{0.8\linewidth}
+		Raw features and interactions (more than 300 variables)\\
+	\end{minipage}
+
+\textbf{Question:} Among \textbf{OLS, lasso, elastic net, and ridge} regression, which estimator should be used to predict the house value?
+\end{frame}
+
+\begin{frame}{Load data and define potential covariates}
+\st{. /*---------- load data ------------------------*/}\\
+\st{. use housing, clear}\\
+\st{. /*----------- define potential covariates ----*/}\\
+\st{. global vlcont bedrooms rooms bag insurance internet tinhouse    ///}\\
+\st{>         vpperson serialno crhincome children npersons hincome}\\
+\st{. global vlfv lotsize bath tenure state}\\
+\st{. global rawvars c.(\$vlcont) i.(\$vlfv)}\\
+\st{. global covars (\$rawvars)$\#\#$(\$rawvars)}\\
+\end{frame}
+
+\begin{frame}{Workflow for prediction}
+	\begin{enumerate}
+		\item \textbf{Split} the data into {\color{red}training} sample and {\color{blue}testing} sample
+		\item \textbf{Obtain} $\hat{\beta}$ for each prediction technique using {\color{red}training sample only}
+		\item \textbf{Evaluate} the prediction model performance of each technique using {\color{blue}the testing sample} and choose the best one
+		\item \textbf{Predict} outcome variable in a new dataset using the chosen model
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{Step 1: Split data into a training and testing sample}
+	\tcbset{
+		enhanced,
+		colback=blue!5!white,
+		boxrule=0.1pt,
+		colframe=blue!85!black,
+		fonttitle=\bfseries
+	}
+	\begin{tcolorbox}[title=Firewall principle, hbox,    %%<<---- here
+		lifted shadow={1mm}{-2mm}{3mm}{0.1mm}%
+		{black!50!white}]
+		The training sample should separate from the testing sample.
+	\end{tcolorbox}
+	
+
+\st{. /*---------- Step 1: split data --------------*/}\\
+\st{. splitsample, generate(sample) split(0.7 0.3)}\\
+\st{. label define lbsample 1 "Training" 2 "Testing"}\\
+\st{. label value sample lbsample}
+\st{. tabulate sample}
+\begin{tabular}{cccc}
+	\st{sample}&\st{Freq.}&\st{Percent}&\st{Cum.}\\
+	\midrule
+	\st{Training}&\st{1,820}&\st{70.00}&\st{70.00}\\
+	\st{Testing}&\st{780}&\st{30.00}&\st{100.00}\\
+	\midrule
+	\st{Total}&\st{2,600}&\st{100.00}\\
+\end{tabular}
+\end{frame}
+
+\begin{frame}{Step 2: Obtain $\hat{\beta}$ using training sample}
+	\label{elastic-net example}
+ \st{. /$\star$--------- Step 2: run in training sample ----$\star$/}\\
+ \st{. //---------- OLS -------------//}\\
+ \st{. regress lnvalue \$covars if sample == 1}\\
+ \st{. estimates store ols}\\
+ \st{. //---------- Lasso -----------//}\\
+ \st{. lasso linear lnvalue \$covars if sample == 1}\\
+ \st{. estimates store lasso}\\
+ \st{. //---------- Elastic net -----//}\\
+ \st{. elasticnet linear lnvalue \$covars if sample == 1, alpha(0.2 0.5 0.75 0.9)}\\
+ \st{. estimates store enet}\\
+ \st{. //---------- ridge ----------//}\\
+ \st{. elasticnet linear lnvalue \$covars if sample == 1, alpha(0)}\\
+ \st{. estimates store ridge}\\
+	\begin{itemize}
+		\item \textbf{if sample == 1} restricts the estimator to the training sample only
+		\item In \textbf{elasticnet}, option \textbf{alpha()} specifies $\alpha$’s to search in penalty term $\alpha||\beta||_1+[(1-\alpha)/2]||\beta||^2_2$$ (\hyperlink{penalized regression}{penalized regression})$
+		\item Specifying \textbf{alpha(0)} is ridge regression
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{The first look at \textbf{lasso} output}
+	\label{lasso}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore lasso}}
+	\end{itemize}
+	\begin{itemize}
+		\item Lasso \textbf{selects} only {\color{red}43} variables among {\color{red}338} potential covariates \hyperlink{post-selection}{\mybox{post-selection}}
+		\item Where is $\hat{\beta}$? Why there are 43 $\lambda$′s? What is the $\lambda^*$ selected by cross-validation? \hyperlink{A closer look at lasso}{\mybox{A closer look at lasso}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{elasticnet} output}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore lasso}}
+	\end{itemize}
+	\begin{itemize}
+		\item Elastic-net selects only 41 variables among 337 potential covariates
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Ridge regression output}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore lasso}}
+	\end{itemize}
+	\begin{itemize}
+		\item Ridge regression selects all variables
+		\item But different $\lambda$ leads to a different estimate of $\beta$
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Step 3: Evaluate prediction performance using testing sample}
+	\begin{itemize}
+		\item [] \small{\texttt{. /$\star$----------Step 3: Evaluate prediction in testing sample ----$\star$/}}
+	\end{itemize}
+	\begin{itemize}
+		\item We choose lasso as the best prediction because it has the smallest MSE in the testing sample
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Step 4: Predict housing value (1)}
+	\label{prediction example}
+	\begin{itemize}
+		\item [] \small{\texttt{. /$\star$----------Step 4: Predict housing value using chosen estimator -$\star$/}}
+	\end{itemize}
+	\begin{itemize}
+		\item Default option \textbf{xb}: in the linear model, we compute $x'_i\hat{\beta}$
+		\item Default option penalized: we use the $\hat{\beta}$ from the lasso regression (See \hyperlink{penalized regression}{penalized regression})
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Step 4: Predict housing value (2)}
+	\label{post-selection}
+	\begin{itemize}
+		\item [] \small{\texttt{. //------post-selection coefficients -------//}}
+	\end{itemize}
+	\begin{itemize}
+		\item Option postselection: OLS y on $X^\ast$ gives post-selection $\hat{\beta}$, where $X^*$ are variables selected by \hyperlink{lasso}{\mybox{lasso}}
+		\item Post-selection coefficients are less biased. In the linear model, they may have better out-of-sample prediction performance than the penalized coefficients (Belloni et al., 2013)
+		\item For the nonlinear models, there is no theory
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{A closer look at lasso (1)}
+Lasso (Tibshirani, 1996) is
+$$\hat{\beta}=argmin_\beta\left\lbrace \sum_{i=1}^{N}L(x'_i\beta,y_i)+\lambda\sum_{j=1}^{p}\omega_j|\beta_j|\right\rbrace $$
+where
+	\begin{itemize}
+		\item $\lambda$ is the lasso penalty parameter and $\omega_j$ is the penalty loading
+		\item The kink in the absolute value function causes some elements in $\hat{\beta}$ to be zero given some value of $\lambda$
+		\item Lasso is also a variable-selection technique
+		\begin{itemize}
+			\item covariates with $\hat{\beta}_j=0$ are excluded
+			\item covariates with $\hat{\beta}_j\neq0$ are included
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{A closer look at lasso (2)}
+	$$\hat{\beta}=argmin_\beta\left\lbrace \sum_{i=1}^{N}L(x'_i\beta,y_i)+\lambda\sum_{j=1}^{p}\omega_j|\beta_j|\right\rbrace $$
+	where
+	\begin{itemize}
+		\item \textbf{lasso} searches over a grid of $\lambda$′s, and each λ corresponds to a different $\beta$ estimate (a different model)
+		\item There is a $\lambda_{max}$ that shrinks all the coefficients to zero
+		\item As $\lambda$ decreases, more variables will be selected
+		\item How to choose $\lambda$? (\hyperlink{choose}{\mybox{choose $\lambda$}})
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{The second look at \textbf{lasso} output}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore lasso}}
+	\end{itemize}
+	\begin{itemize}
+		\item The number of nonzero coefficients increases as $\lambda$ decreases
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{coefpath}: Coefficients path plot}
+	\begin{itemize}
+		\item [] \small{\texttt{. coefpath, xunits(rlnlambda)}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Dynamic of coefficient path}
+
+\end{frame}
+
+\begin{frame}{\textbf{lassoknots}: Display knot table}
+	\begin{itemize}
+		\item [] \small{\texttt{. lassoknots}}
+	\end{itemize}
+	\begin{itemize}
+		\item A $\lambda$ is a knot if a variable is {\color{red}added or removed} from the model
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{How to choose $\lambda$?}
+	\label{choose}
+	For lasso, we can choose $\lambda$ by cross-validation, adaptive lasso, plugin, and manual choice.	
+	\begin{itemize}
+		\item \textbf{Cross-validation} {\color{red}mimics the process of doing out-of-sample prediction}. It produces estimates of out-of-sample MSE and selects $\lambda$ with minimum MSE
+		\item \textbf{Adaptive lasso} performs multiple lassos, each with CV. After each lasso, variables with zero coefficients are removed and remaining variables are given {\color{red}penalty weights $\omega_j$ designed to drive small coefficients to zero}. Thus, adaptive lasso typically selects fewercovariatesthan CV (\hyperlink{lasso formula}{\mybox{lasso formula}})
+		\item The \textbf{Plugin} method is designed to dominate the estimation noise. It tends to selects fewer variables than CV or adaptive
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{How does cross-validation work?}
+	\begin{enumerate}
+		\item Based on data, compute a sequence of $\lambda$’s as $\lambda_1 > \lambda_2 > ··· > \lambda_k$. $\lambda_1$ makes all coefficients zero (no variables are selected)
+		\item For each $\lambda_j$, do K-fold cross-validation to get an estimate of out-of-sample MSE
+		\item Select the $\lambda^*$ with the smallest estimate of out-of-sample MSE, and refit lasso using $\lambda^*$ and original training sample
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{The third look at \textbf{lasso} output}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore lasso}}
+	\end{itemize}
+	\begin{itemize}
+		\item The selected $\lambda^*$ has the smallest CV mean prediction error and largest out-of-sample R-squared estimate
+		\item By default \textbf{lasso} searches over 100 $\lambda$′s, but there are only 43 $\lambda$’s here. Why?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{cvplot}: Cross-validation plot}
+	\begin{itemize}
+		\item \textbf{lasso} stops searching for λ once it finds a valid CV minimum
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{cvplot}: Full picture}
+	\begin{itemize}
+		\item It may take a long time to search all the $\lambda$’s
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Use option \textbf{selection()} to choose $\lambda$}
+	\begin{itemize}
+		\item [] \st{. lasso linear lnvalue \$covars if sample==1}
+		\item [] \st{. estimates store cv}
+		\item [] \st{. lasso linear lnvalue \$covars if sample == 1, selection(adaptive)}
+		\item [] \st{. estimates store adaptive}
+		\item [] \st{. lasso linear lnvalue \$covars if sample == 1, selection(plugin)}
+		\item [] \st{ estimates store plugin}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{lassoinfo}: Lasso information summary}
+	\begin{itemize}
+		\item [] \small{\texttt{. lassoinfo cv adaptive plugin}}
+	\end{itemize}
+	\begin{itemize}
+		\item Adaptive lasso selects fewer variables than regular lasso
+		\item Plugin selects even fewer variables than adaptive lasso
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{lassocoef}: Display lasso coefficients}
+	\begin{itemize}
+		\item [] \small{\texttt{. lassoinfo cv adaptive plugin, display(coef)}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{lassoselect}: Manually choose a $\lambda$ (1)}
+	\begin{itemize}
+	\item Suppose you want to choose λ with the minimum BIC, there is no need to rerun \textbf{lasso} 
+	\item First, let’s look at output from \textbf{lassoknots} for BIC
+	\end{itemize}
+	\begin{itemize}
+		\item [] \small{\texttt{. estimates restore cv}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{\textbf{lassoselect}: Manually choose a $\lambda$ (2)}
+	\begin{itemize}
+		\item [] \small{\texttt{. lassoselect id = 35}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Comparing CV, adaptive, plugin, and BIC}
+	\begin{itemize}
+		\item [] \small{\texttt{. lassogof cv bic adaptive plugin if sample == 2}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Lasso toolbox summary}
+	\begin{itemize}
+		\item Estimation
+		\begin{itemize}
+			\item \textbf{lasso} and \textbf{elasticnet} for linear, binary, and count data
+			\item \textbf{sqrtlasso} for linear data
+			\item cross-validation, adaptive lasso, plugin, and manual selection
+		\end{itemize}
+		\item Graph
+		\begin{itemize}
+			\item \textbf{cvplot}: cross-validation plot
+			\item \textbf{coefpath}: coefficient path
+		\end{itemize}
+		\item Exploratory tools
+		\begin{itemize}
+			\item \textbf{lassoinfo}: summary of lasso fitting
+			\item \textbf{lassoknots}: table of knots
+			\item \textbf{lassocoef}: display lasso coefficients
+			\item \textbf{lassoselect}: manually select $\lambda$ (or $\alpha$)
+		\end{itemize}	
+		\item Prediction
+		\begin{itemize}
+			\item \textbf{splitsample}: randomly divide data into different samples
+			\item \textbf{predict}: prediction
+			\item \textbf{lassogof}: evaluate in-sample and out-of-sample prediction
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{References}
+	\bibliography{lasso.bib}
+	\bibliographystyle{chicago}
+\end{frame}
+
+
+\end{document}
